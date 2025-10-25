@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Menú Delivery — Servin Foods</title>
+  <meta name="description" content="Página de pedido rápido para delivery con cálculo de totales y envío por WhatsApp." />
+  <style>
+    /* Neomorphic styles with light/dark mode toggle */
+    :root{
+      --bg:#ecf0f3;
+      --card:#ecf0f3;
+      --shadow1: rgba(255,255,255,0.9);
+      --shadow2: rgba(163,177,198,0.6);
+      --text:#1f2933;
+      --accent:#d97706; /* warm accent (like saffron) */
+      --glass: rgba(255,255,255,0.6);
+      --success: #16a34a;
+      --danger: #ef4444;
+      --delivery-fee: 10000; /* en Gs - cambia si quieres */
+    }
+
+    .dark{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --shadow1: rgba(0,0,0,0.6);
+      --shadow2: rgba(255,255,255,0.03);
+      --text:#e6eef6;
+      --accent:#f59e0b;
+      --glass: rgba(255,255,255,0.02);
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: radial-gradient(1200px 1200px at 10% 10%, rgba(255,255,255,0.6), transparent), var(--bg);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:30px;
+      transition:background .25s ease, color .25s ease;
+    }
+
+    .container{max-width:1100px; margin:0 auto}
+
+    header{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:28px}
+    .brand{display:flex; align-items:center; gap:16px}
+    .logo{
+      width:88px; height:88px; border-radius:18px; display:flex; align-items:center; justify-content:center;
+      box-shadow: 8px 8px 16px var(--shadow2), -8px -8px 16px var(--shadow1);
+      background:linear-gradient(180deg, var(--card), rgba(255,255,255,0.02));
+      overflow:hidden;
+    }
+    .logo img{width:100%; height:100%; object-fit:cover}
+    .brand h1{font-size:18px; margin:0}
+    .brand p{margin:0; font-size:13px; opacity:.8}
+
+    .controls{display:flex; gap:12px; align-items:center}
+    .toggle{
+      width:54px; height:28px; border-radius:999px; padding:4px; display:inline-flex; align-items:center; cursor:pointer;
+      box-shadow: inset 6px 6px 12px var(--shadow2), inset -6px -6px 12px var(--shadow1);
+      background:var(--card);
+    }
+    .toggle .dot{width:20px; height:20px; border-radius:50%; background:var(--accent); transform:translateX(0); transition:transform .2s}
+    .toggle.dark .dot{transform:translateX(26px)}
+
+    main{display:grid; grid-template-columns: 1fr 360px; gap:26px}
+
+    /* Menus list */
+    .menus{display:grid; gap:18px}
+    .card{
+      border-radius:16px; padding:14px; display:flex; gap:14px; align-items:center;
+      background:var(--card);
+      box-shadow: 8px 8px 16px var(--shadow2), -8px -8px 16px var(--shadow1);
+    }
+    .card img{width:120px; height:80px; object-fit:cover; border-radius:12px; flex-shrink:0; background:linear-gradient(90deg, rgba(0,0,0,0.05), rgba(0,0,0,0.02))}
+    .card .meta{flex:1}
+    .card h3{margin:0 0 6px 0}
+    .card p{margin:0 0 10px 0; font-size:13px; opacity:.85}
+    .price{font-weight:700}
+    .qty{display:flex; gap:8px; align-items:center}
+    .qty input{width:74px; border-radius:10px; padding:8px 10px; border:none; outline:none; font-weight:600; text-align:center;
+      box-shadow: inset 4px 4px 8px var(--shadow2), inset -4px -4px 8px var(--shadow1); background:var(--card); color:var(--text)}
+    .qty button{border-radius:10px; padding:8px 12px; border:none; cursor:pointer; font-weight:700; box-shadow: 6px 6px 12px var(--shadow2), -6px -6px 12px var(--shadow1); background:var(--card)}
+
+    /* Sidebar */
+    .sidebar{position:sticky; top:30px; align-self:start}
+    .summary{border-radius:16px; padding:18px; background:var(--card); box-shadow: 8px 8px 16px var(--shadow2), -8px -8px 16px var(--shadow1)}
+    .summary h4{margin:0 0 12px 0}
+    .line{display:flex; justify-content:space-between; margin:8px 0}
+    .total{font-size:20px; font-weight:800; margin-top:12px}
+    .whatsapp-btn{display:block; width:100%; padding:12px 14px; border-radius:12px; text-align:center; text-decoration:none; color:var(--card); font-weight:800; margin-top:12px;
+      box-shadow: 6px 6px 12px var(--shadow2), -6px -6px 12px var(--shadow1); background:linear-gradient(180deg,var(--accent), #b45309)}
+
+    footer{margin-top:30px; text-align:center; opacity:.8; font-size:13px}
+
+    /* Responsive */
+    @media (max-width:900px){
+      main{grid-template-columns:1fr;}
+      .logo{width:68px;height:68px}
+      .brand h1{font-size:16px}
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="app">
+    <header>
+      <div class="brand">
+        <div class="logo" title="Reemplaza con tu logo">
+          <img src="logo.png" alt="Logo">
+        </div>
+        <div>
+          <h1>Servin Foods - Delivery</h1>
+          <p>Pedidos rápidos y entregas frescas.</p>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div style="text-align:right; font-size:13px; opacity:.9">
+          <div>Delivery fijo: <strong id="delivery-fee-display"></strong></div>
+        </div>
+        <div class="toggle" id="modeToggle" title="Cambiar tema" role="button" tabindex="0">
+          <div class="dot"></div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="menus">
+        <!-- CARD 1 -->
+        <article class="card" data-price="35000">
+          <img src="menu1.png" alt="Imagen Menú 1 (reemplazar)">
+          <div class="meta">
+            <h3>Menú Clásico — Milanesa con Puré</h3>
+            <p>Porción generosa, acompañada de ensalada fresca y salsa casera.</p>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px">
+              <div class="price">35.000 Gs</div>
+              <div class="qty">
+                <button class="dec">−</button>
+                <input type="number" min="0" value="0">
+                <button class="inc">+</button>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- CARD 2 -->
+        <article class="card" data-price="30000">
+          <img src="menu2.png" alt="Imagen Menú 2 (reemplazar)">
+          <div class="meta">
+            <h3>Menú Pasta — Ravioles caseros</h3>
+            <p>Rellenos tradicionales con salsa de la casa y queso gratinado.</p>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px">
+              <div class="price">30.000 Gs</div>
+              <div class="qty">
+                <button class="dec">−</button>
+                <input type="number" min="0" value="0">
+                <button class="inc">+</button>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- CARD 3 -->
+        <article class="card" data-price="25000">
+          <img src="menu3.png" alt="Imagen Menú 3 (reemplazar)">
+          <div class="meta">
+            <h3>Menú Verde — Ensalada Gourmet + Proteína</h3>
+            <p>Mezcla de hojas, ingredientes de estación y proteína a elección.</p>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px">
+              <div class="price">25.000 Gs</div>
+              <div class="qty">
+                <button class="dec">−</button>
+                <input type="number" min="0" value="0">
+                <button class="inc">+</button>
+              </div>
+            </div>
+          </div>
+        </article>
+
+      </section>
+
+      <aside class="sidebar">
+        <div class="summary">
+          <h4>Resumen del pedido</h4>
+          <div class="line"><div>Menú Clásico</div><div id="sub1">0 Gs</div></div>
+          <div class="line"><div>Menú Pasta</div><div id="sub2">0 Gs</div></div>
+          <div class="line"><div>Menú Verde</div><div id="sub3">0 Gs</div></div>
+          <hr style="border:none; height:1px; margin:10px 0; background:linear-gradient(to right, transparent, rgba(0,0,0,0.06), transparent)" />
+          <div class="line"><div>Subtotal</div><div id="subtotal">0 Gs</div></div>
+          <div class="line"><div>Delivery</div><div id="delivery">0 Gs</div></div>
+          <div class="total">Total a pagar <div id="total" style="display:inline-block; margin-left:8px">0 Gs</div></div>
+
+          <!-- botón para compartir ubicación (se agregó sin cambiar nada más) -->
+          <button id="shareLocation" class="whatsapp-btn">📍 Compartir ubicación</button>
+
+          <a href="#" id="waButton" class="whatsapp-btn">Enviar pedido por WhatsApp</a>
+
+          <div style="font-size:12px; opacity:.8; margin-top:10px">Al hacer clic se abrirá WhatsApp con el detalle del pedido. Revisa tu número y disponibilidad.</div>
+        </div>
+      </aside>
+    </main>
+
+    <footer>
+      Plantilla creada con estilo neomórfico — reemplaza las imágenes <code>logo.png</code> y <code>menu1.jpg</code>, <code>menu2.jpg</code>, <code>menu3.jpg</code> por tus archivos.
+    </footer>
+  </div>
+
+  <script>
+    (function(){
+      const whatsappNumber = '+595976959157'; // Tu número real (prefijo +595)
+      const deliveryFee = Number(getComputedStyle(document.documentElement).getPropertyValue('--delivery-fee')) || 10000;
+
+      const cards = Array.from(document.querySelectorAll('.card'));
+      const subEls = [document.getElementById('sub1'), document.getElementById('sub2'), document.getElementById('sub3')];
+      const subtotalEl = document.getElementById('subtotal');
+      const deliveryEl = document.getElementById('delivery');
+      const totalEl = document.getElementById('total');
+      const waBtn = document.getElementById('waButton');
+      const shareBtn = document.getElementById('shareLocation');
+      const deliveryDisplay = document.getElementById('delivery-fee-display');
+      let userLocation = ''; // enlace google maps si el cliente comparte ubicación
+
+      deliveryDisplay.textContent = formatGs(deliveryFee);
+
+      function formatGs(n){
+        const x = Number(n) || 0;
+        return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' Gs';
+      }
+
+      function getCardPrice(card){
+        return parseInt(card.getAttribute('data-price') || '0', 10);
+      }
+
+      function updateSummary(){
+        let subtotal = 0;
+        cards.forEach((card, idx)=>{
+          const price = getCardPrice(card);
+          const qty = Number(card.querySelector('input').value) || 0;
+          const sub = price * qty;
+          subEls[idx].textContent = formatGs(sub);
+          subtotal += sub;
+        });
+
+        subtotalEl.textContent = formatGs(subtotal);
+        deliveryEl.textContent = formatGs(subtotal>0? deliveryFee: 0);
+        const total = subtotal + (subtotal>0? deliveryFee: 0);
+        totalEl.textContent = formatGs(total);
+
+        // Construir mensaje limpio para WhatsApp
+        const lines = [];
+        cards.forEach((card)=>{
+          const name = card.querySelector('h3').textContent.trim();
+          const qty = Number(card.querySelector('input').value) || 0;
+          if(qty>0) lines.push(`${qty} x ${name} — ${formatGs(getCardPrice(card)*qty)}`);
+        });
+
+        if(lines.length===0) lines.push('Sin items seleccionados');
+        lines.push('');
+        lines.push(`Subtotal: ${formatGs(subtotal)}`);
+        if(subtotal>0) lines.push(`Delivery: ${formatGs(deliveryFee)}`);
+        lines.push(`Total: ${formatGs(total)}`);
+
+        // Si el cliente compartió ubicación, agregar enlace
+        if(userLocation){
+          lines.push('');
+          lines.push(`Ubicación del cliente: ${userLocation}`);
+        }
+
+        const message = encodeURIComponent(`Pedido desde la web Servin Foods\n\n${lines.join('\n')}`);
+        waBtn.href = `https://wa.me/${whatsappNumber.replace(/[^0-9]/g,'')}?text=${message}`;
+      }
+
+      cards.forEach(card=>{
+        const inc = card.querySelector('.inc');
+        const dec = card.querySelector('.dec');
+        const input = card.querySelector('input');
+        inc.addEventListener('click', ()=>{ input.value = Number(input.value||0)+1; updateSummary(); });
+        dec.addEventListener('click', ()=>{ input.value = Math.max(0, Number(input.value||0)-1); updateSummary(); });
+        input.addEventListener('input', ()=>{ if(input.value===''||Number(input.value)<0) input.value=0; updateSummary(); });
+      });
+
+      updateSummary();
+
+      const modeToggle = document.getElementById('modeToggle');
+      function setDark(on){
+        if(on) document.documentElement.classList.add('dark'), modeToggle.classList.add('dark');
+        else document.documentElement.classList.remove('dark'), modeToggle.classList.remove('dark');
+      }
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setDark(prefersDark);
+      modeToggle.addEventListener('click', ()=>{ setDark(!document.documentElement.classList.contains('dark')) });
+      modeToggle.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); modeToggle.click(); } });
+
+      // Manejo de compartir ubicación
+      shareBtn.addEventListener('click', function(){
+        if(!navigator.geolocation){
+          alert('Geolocalización no soportada por tu navegador.');
+          return;
+        }
+        shareBtn.textContent = 'Obteniendo ubicación...';
+        navigator.geolocation.getCurrentPosition(function(pos){
+          const lat = pos.coords.latitude.toFixed(6);
+          const lon = pos.coords.longitude.toFixed(6);
+          userLocation = `https://www.google.com/maps?q=${lat},${lon}`;
+          shareBtn.textContent = '✅ Ubicación agregada';
+          updateSummary();
+        }, function(err){
+          console.warn(err);
+          shareBtn.textContent = 'No se pudo obtener ubicación';
+          setTimeout(()=>{ shareBtn.textContent = '📍 Compartir ubicación'; }, 2500);
+        }, {enableHighAccuracy:true, timeout:10000});
+      });
+
+      waBtn.addEventListener('click', function(e){
+        const subtotal = Number(subtotalEl.textContent.replace(/\D/g,''))||0;
+        if(subtotal===0){
+          e.preventDefault();
+          alert('Agrega al menos 1 menú antes de enviar el pedido.');
+        }
+      });
+
+    })();
+  </script>
+</body>
+</html>
